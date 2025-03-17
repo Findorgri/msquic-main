@@ -24,13 +24,12 @@ jobs:
     - name: Checkout repository with submodules
       uses: actions/checkout@v4
       with:
-        submodules: recursive
+        submodules: 'recursive'
 
     - name: Install dependencies
       run: |
-        sudo apt-add-repository ppa:lttng/stable-2.13
         sudo apt-get update
-        sudo apt-get install -y cmake build-essential liblttng-ust-dev lttng-tools libssl-dev libnuma-dev
+        sudo apt-get install -y build-essential cmake libssl-dev libnuma-dev
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
@@ -38,11 +37,18 @@ jobs:
         languages: ${{ matrix.language }}
         build-mode: manual
 
+    - name: Build OpenSSL manually
+      run: |
+        cd submodules/openssl
+        ./config --prefix=/usr/local/openssl --openssldir=/usr/local/openssl
+        make
+        sudo make install
+
     - name: Build MsQuic with CMake
       run: |
         mkdir -p build
         cd build
-        cmake -G 'Unix Makefiles' -DQUIC_ENABLE_LOGGING=OFF ..
+        cmake -G 'Unix Makefiles' -DQUIC_ENABLE_LOGGING=OFF -DOPENSSL_ROOT_DIR=/usr/local/openssl ..
         cmake --build . --verbose
 
     - name: Perform CodeQL Analysis
